@@ -536,7 +536,7 @@ def init_params(options):
 
     # init_state, init_cell
     params = get_layer('ff')[0](options, params, prefix='ff_state',
-                                nin=ctxdim, nout=options['dim'])
+                                nin=options['dim'], nout=options['dim'])
     # decoder
     params = get_layer(options['decoder'])[0](options, params,
                                               prefix='decoder',
@@ -598,13 +598,14 @@ def build_model(tparams, options):
     ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim-1)
 
     # mean of the context (across time) will be used to initialize decoder rnn
-    ctx_mean = (ctx * x_mask[:, :, None]).sum(0) / x_mask.sum(0)[:, None]
+    # ctx_mean = (ctx * x_mask[:, :, None]).sum(0) / x_mask.sum(0)[:, None]
 
     # or you can use the last state of forward + backward encoder rnns
     # ctx_mean = concatenate([proj[0][-1], projr[0][-1]], axis=proj[0].ndim-2)
 
-    # initial decoder state
-    init_state = get_layer('ff')[1](tparams, ctx_mean, options,
+    # or you can use the last state of backward encoder rnns
+    # as initial decoder state
+    init_state = get_layer('ff')[1](tparams, projr[0][-1], options,
                                     prefix='ff_state', activ='tanh')
 
     # word embedding (target), we will shift the target sequence one time step
@@ -684,7 +685,7 @@ def build_sampler(tparams, options, trng, use_noise):
     # get the input for decoder rnn initializer mlp
     ctx_mean = ctx.mean(0)
     # ctx_mean = concatenate([proj[0][-1],projr[0][-1]], axis=proj[0].ndim-2)
-    init_state = get_layer('ff')[1](tparams, ctx_mean, options,
+    init_state = get_layer('ff')[1](tparams, projr[0][-1], options,
                                     prefix='ff_state', activ='tanh')
 
     print 'Building f_init...',
